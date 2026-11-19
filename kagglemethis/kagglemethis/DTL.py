@@ -77,13 +77,50 @@ class DTL:
         return best_feature, best_threshold, best_left, best_right
     
     def tree(self, X, y, depth):
-        pass
+        new = Node()
+
+        if len(np.unique(y)) == 1 or len(y) < self.min_samples_split or (self.max_depth is not None and depth >= self.max_depth):
+            new.is_leaf = True
+            new.value = np.bincount(y).argmax()
+            return new
+
+        feature, threshold, left, right = self.split(X, y)
+
+        if feature is None:
+            new.is_leaf = True
+            new.value = np.bincount(y).argmax()
+            return new
+
+        new.feature = feature
+        new.threshold = threshold
+        
+        new.left = self.tree(X[left], y[left], depth + 1)
+        new.right = self.tree(X[right], y[right], depth + 1)    
+
+        return new
 
     def fit(self, X, y):
-        pass
+        x = np.asarray(X)
+        y = np.asarray(y)
+        self.classes, y = np.unique(y, return_inverse=True)
+        self.root = self.tree(x, y, depth=0)
+        return self
 
     def predict(self, X):
-        pass
+        X = np.asarray(X)
+        predictions = []
+        for x in X:
+            node = self.root
+            while not node.is_leaf:
+                if x[node.feature] <= node.threshold:
+                    node = node.left
+                else:
+                    node = node.right
+            predictions.append(self.classes[node.value])
+        return self.classes[np.array(predictions)]
 
-    def score(self):
-        pass
+    def score(self, X, y):
+        predictions = self.predict(X)
+        y = np.asarray(y).ravel()
+
+        return np.mean(predictions == y)

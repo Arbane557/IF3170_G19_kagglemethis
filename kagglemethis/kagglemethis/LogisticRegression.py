@@ -119,3 +119,7 @@ class LogisticRegression:
         labels = (probability >= 0.5).astype(int)
 
         return self.classes[labels]
+
+    def score(self, data, target):
+        predictions = self.predict(data)
+        return np.mean(predictions == np.asarray(target))
