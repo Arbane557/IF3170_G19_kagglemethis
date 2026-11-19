@@ -16,7 +16,7 @@ class NaiveBayes:
         kalo mau mixed, misal data X = [123, 'Ngawi', 5000, 'STEIK'], maka 
         categorical_features = [1,3] (daerah dan fakultas)
         """
-        
+
         if X is None or y is None or len(X) == 0 or len(y) == 0:
             return self
 
@@ -122,3 +122,10 @@ class NaiveBayes:
         log_prob_shifted = joint_log_prob - np.max(joint_log_prob, axis=1, keepdims=True)
         probs = np.exp(log_prob_shifted)
         return probs / np.sum(probs, axis=1, keepdims=True)
+    
+    def score(self, X, y):
+        if len(self.classes) == 0 or X is None or y is None or len(y) == 0:
+            return None
+        y_pred = self.predict(X)
+        y_arr = np.asarray(y)
+        return float(np.mean(y_pred == y_arr))
