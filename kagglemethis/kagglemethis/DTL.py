@@ -28,6 +28,17 @@ class DTL:
         count = np.bincount(y)
         p = count[count > 0] / len(y)
         return -np.sum(p * np.log2(p))
+    
+    def gini(self, y):
+        if len(y) == 0:
+            return 0
+        count = np.bincount(y)
+        p = count[count > 0] / len(y)
+        return 1 - np.sum(p ** 2)
+
+    def impurity(self, y):
+        return self.entropy(y) if self.criterion == 'entropy' else self.gini(y)
+    
 
     def gain(self, y, y_left, y_right):
         n = len(y)
@@ -37,8 +48,8 @@ class DTL:
         if nl == 0 or nr == 0:
             return 0
 
-        parent_entropy = self.entropy(y)
-        weighted_entropy = (nl / n) * self.entropy(y_left) + (nr / n) * self.entropy(y_right)
+        parent_entropy = self.impurity(y)
+        weighted_entropy = (nl / n) * self.impurity(y_left) + (nr / n) * self.impurity(y_right)
 
         return parent_entropy - weighted_entropy
 
@@ -116,7 +127,7 @@ class DTL:
                     node = node.left
                 else:
                     node = node.right
-            predictions.append(self.classes[node.value])
+            predictions.append(node.value)
         return self.classes[np.array(predictions)]
 
     def score(self, X, y):
