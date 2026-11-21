@@ -3,23 +3,6 @@ import numpy as np
 
 class LogisticRegression:
     def __init__(self, rate=0.01, epochs=1000, penalty=None, strength=0.01, ratio=0.5):
-        # Rate control how far weights move in every update
-        # Strength control penalty size and ratio control L1 share in Elastic Net
-        if not np.isfinite(rate) or rate <= 0:
-            raise ValueError("Rate must be positive and finite")
-
-        if not isinstance(epochs, int) or epochs <= 0:
-            raise ValueError("Epochs must be a positive integer")
-
-        if penalty not in [None, "l1", "l2", "elasticnet"]:
-            raise ValueError("Penalty must be None, l1, l2, or elasticnet")
-
-        if not np.isfinite(strength) or strength < 0:
-            raise ValueError("Strength must be nonnegative and finite")
-
-        if not np.isfinite(ratio) or ratio < 0 or ratio > 1:
-            raise ValueError("Ratio must be between zero and one")
-
         self.rate = rate
         self.epochs = epochs
         self.penalty = penalty
@@ -36,19 +19,7 @@ class LogisticRegression:
         data = np.asarray(data, dtype=float)
         target = np.asarray(target)
 
-        if data.ndim != 2 or data.shape[0] == 0 or data.shape[1] == 0:
-            raise ValueError("Data must be a nonempty matrix")
-
-        if target.ndim != 1 or len(target) != len(data):
-            raise ValueError("Target must contain one label for each sample")
-
-        if not np.all(np.isfinite(data)):
-            raise ValueError("Data must contain only finite numbers")
-
         classes = np.unique(target)
-
-        if len(classes) != 2:
-            raise ValueError("Logistic Regression needs exactly two classes")
 
         # Convert second sorted class into one and first class into zero
         # Keep original labels so prediction can return the same label type
@@ -79,10 +50,7 @@ class LogisticRegression:
                 gradient += self.strength * self.weights
 
             elif self.penalty == "elasticnet":
-                gradient += self.strength * (
-                    self.ratio * np.sign(self.weights)
-                    + (1 - self.ratio) * self.weights
-                )
+                gradient += self.strength * (self.ratio * np.sign(self.weights) + (1 - self.ratio) * self.weights)
 
             # Move weights and bias against the gradient to reduce loss
             # Penalty only affect weights so bias is never regularized
@@ -92,18 +60,7 @@ class LogisticRegression:
         return self
 
     def predict_proba(self, data):
-        # Prediction need fitted weights and the same number of feature columns
-        # Keep the input as a matrix even when predicting only one sample
-        if self.weights is None:
-            raise ValueError("Fit the model before prediction")
-
         data = np.asarray(data, dtype=float)
-
-        if data.ndim != 2 or data.shape[1] != len(self.weights):
-            raise ValueError("Data must have the same feature count as training")
-
-        if not np.all(np.isfinite(data)):
-            raise ValueError("Data must contain only finite numbers")
 
         scores = data @ self.weights + self.bias
         probability = np.exp(-np.logaddexp(0, -scores))
