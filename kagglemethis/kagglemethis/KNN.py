@@ -1,7 +1,7 @@
 import numpy as np
 
 class KNN:
-    def __init__(self, k=3, metric="euclidian", p=2):
+    def __init__(self, k=3, metric="euclidean", p=2):
         if k < 1:
             raise ValueError("K harus minimal 1")
 
@@ -37,7 +37,7 @@ class KNN:
         self.y_train = y
         return self
 
-    def calcualate_distance(self, x1, x2):
+    def calculate_distance(self, x1, x2):
         if self.metric == "euclidean":
             return np.sqrt(np.sum((x1 - x2) ** 2))
         
@@ -49,6 +49,7 @@ class KNN:
                 np.abs(x1 - x2) ** self.p
             ) ** (1 / self.p)
 
+        raise ValueError(f"Metric tidak dikenal: {self.metric}")
 
     def predict(self, x):
         if self.X_train is None:
@@ -62,9 +63,9 @@ class KNN:
         predictions = []
 
         for rows in x:
-            distances = [self.calcualate_distance(rows, x_train) for x_train in self.X_train]
+            distances = [self.calculate_distance(rows, x_train) for x_train in self.X_train]
 
-            nearest_indices = np.argsort(distances)[:self.k]
+            nearest_indices = np.argsort(distances, kind="stable")[:self.k]
             nearest_labels = self.y_train[nearest_indices]
 
             labels, counts = np.unique(nearest_labels, return_counts=True)
@@ -72,3 +73,8 @@ class KNN:
             predictions.append(prediction)
 
         return np.array(predictions)
+
+    def score(self, x, y):
+        predictions = self.predict(x)
+        return float(np.mean(predictions == np.asarray(y)))
+
