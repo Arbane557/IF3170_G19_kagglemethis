@@ -10,7 +10,7 @@ class Node:
         self.is_leaf = False
 
 class DTL:
-    def __init__(self, criterion='entropy', max_depth=None, min_samples_split=2, min_samples_leaf=1, max_features=None, random_state=None):
+    def __init__(self, criterion='entropy', max_depth=None, min_samples_split=2, min_samples_leaf=1, max_features=None, random_state=None,  min_impurity_decrease = 0.0):
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.min_samples_leaf = min_samples_leaf
@@ -19,6 +19,7 @@ class DTL:
         self.random_state = random_state
         self.classes = None
         self.root = None
+        self.min_impurity_decrease = min_impurity_decrease
 
     # helper
     def entropy (self, y):
@@ -78,7 +79,7 @@ class DTL:
 
                 gain = self.gain(y, y[left], y[right])
 
-                if gain > best:
+                if gain >= self.min_impurity_decrease and gain > best:                    
                     best = gain
                     best_feature = feature
                     best_threshold = threshold
