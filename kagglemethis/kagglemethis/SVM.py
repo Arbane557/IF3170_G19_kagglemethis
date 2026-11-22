@@ -223,3 +223,46 @@ class SVC:
             raise ValueError(f"Number of samples mismatch, X has {X.shape[0]} samples but y has {y.shape[0]} samples.")
 
         return np.mean(self.predict(X) == y)
+
+
+
+# Plot the decision boundary of 2D data based on a fitted SVC model
+def plot_decision_boundary(model, X, y, label1="Feature 1", label2="Feature 2", title="SVM Decision Boundary Visualisation"):
+    if not isinstance(model, SVC):
+        raise TypeError(f"Unknown model parameter passed, the model should be an SVC model.")
+
+    X = np.asarray(X, dtype=float)
+    if X.shape[1] != 2:
+        raise NotImplementedError(f"Only supports 2D data on X, the X dimension is {X.shape[1]}.")
+    
+    y = np.asarray(y).reshape(-1)
+    if y.shape[0] != X.shape[0]:
+        raise ValueError(f"Number of samples mismatch, X has {X.shape[0]} samples but y has {y.shape[0]} samples.")
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Scatter X points using different color for each class
+    y_colors = np.where(y == model._classes[0], -1, 1)
+    ax.scatter(X[:, 0], X[:, 1], c=y_colors, cmap=plt.cm.coolwarm, s=30, edgecolors='k')
+    
+    # Show the actual support vector with different style
+    if model._support_vectors is not None and len(model._support_vectors) > 0:
+        ax.scatter(model._support_vectors[:, 0], model._support_vectors[:, 1], s=150, facecolors='none', edgecolors='k', linewidths=1.5, label='Support Vectors')
+
+    # Find hyperplane by evaluating the decision function, based on the X-Y coordinate
+    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 200), np.linspace(y_min, y_max, 200))
+
+    grid_points = np.c_[xx.ravel(), yy.ravel()]
+    Z = model.decision_function(grid_points)
+    Z = Z.reshape(xx.shape)
+
+    # Draw the hyperplane and the line intersecting with each outer data points
+    ax.contour(xx, yy, Z, colors='k', levels=[-1, 0, 1], alpha=0.5, linestyles=['--', '-', '--'])
+
+    ax.set_title(title)
+    ax.set_xlabel(label1)
+    ax.set_ylabel(label2)
+    ax.legend()
+    plt.show()
