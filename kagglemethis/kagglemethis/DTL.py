@@ -74,12 +74,12 @@ class DTL:
                 left = X[:, feature] <= threshold
                 right = X[:, feature] > threshold
 
-                if sum(left) < self.min_samples_leaf or sum(right) < self.min_samples_leaf:
+                if np.count_nonzero(left) < self.min_samples_leaf or np.count_nonzero(right) < self.min_samples_leaf:
                     continue
 
                 gain = self.gain(y, y[left], y[right])
 
-                if gain >= self.min_impurity_decrease and gain > best:                    
+                if gain >= self.min_impurity_decrease and gain > best:
                     best = gain
                     best_feature = feature
                     best_threshold = threshold
