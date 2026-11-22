@@ -50,16 +50,10 @@ class SVC:
         if gamma <= 0:
             raise ValueError(f"Invalid gamma value (gamma={gamma}) for Gaussian kernel")
 
-        m = X1.shape[0]
-        k = X2.shape[0]
-        K = np.zeros((m, k))
-
-        for i in range(m):
-            for j in range(k):
-                euclid_dist = np.sum((X1[i] - X2[j]) ** 2)
-                K[i, j] = np.exp(-gamma * euclid_dist)
-
-        return K
+        X1_square = np.sum(X1 ** 2, axis=1, keepdims=True)
+        X2_square = np.sum(X2 ** 2, axis=1, keepdims=True).T
+        euclid_dist = np.maximum(X1_square + X2_square - 2.0 * np.dot(X1, X2.T), 0.0)
+        return np.exp(-gamma * euclid_dist)
     
     # Sigmoid kernel, just use the formula from slide
     @staticmethod
