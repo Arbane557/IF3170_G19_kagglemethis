@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Node:
     def __init__(self):
@@ -88,6 +89,47 @@ class DTL:
 
         return best_feature, best_threshold, best_left, best_right
     
+    def viz(model, top_n=3, feature_names=None, class_names=None):
+        from collections import deque
+
+        fig, ax = plt.subplots(figsize=(20, 10))
+        ax.axis('off')
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+
+        queue = deque([(model.root, 0, 0.5, 0.0, 1.0, None)])
+
+        while queue:
+            node, depth, cx, lx, rx, parent_xy = queue.popleft()
+            if depth > top_n:
+                continue
+
+            cy = 1.0 - (depth + 0.5) / (top_n + 1)
+
+            if node.is_leaf or depth == top_n:
+                v = node.value if node.value is not None else 0
+                label = class_names[v] if class_names else str(v)
+                color = '#ff9999' if label == 'canceled' else '#90ee90'
+            else:
+                fname = feature_names[node.feature] if feature_names else f"X[{node.feature}]"
+                label = f"{fname}\n≤ {node.threshold:.2f}"
+                color = '#add8e6'
+
+            ax.text(cx, cy, label, ha='center', va='center', fontsize=7,
+                    bbox=dict(boxstyle='round', facecolor=color, edgecolor='gray'),
+                    wrap=True)
+
+            if parent_xy:
+                ax.annotate('', xy=(cx, cy + 0.03), xytext=parent_xy,
+                            arrowprops=dict(arrowstyle='->', color='gray'))
+
+            if not node.is_leaf and depth < top_n:
+                mid = (lx + rx) / 2
+                queue.append((node.left,  depth+1, (lx+mid)/2, lx,  mid, (cx, cy-0.03)))
+                queue.append((node.right, depth+1, (mid+rx)/2, mid, rx,  (cx, cy-0.03)))
+
+        return fig
+
     def tree(self, X, y, depth):
         new = Node()
 
