@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Visualisasi Logistic Regression</title>
+<style>
+:root {
+  color-scheme: light;
+  --color-primary: #0066cc;
+  --color-primary-focus: #0071e3;
+  --color-ink: #1d1d1f;
+  --color-ink-muted-80: #333333;
+  --color-canvas: #ffffff;
+  --color-parchment: #f5f5f7;
+  --color-hairline: #e0e0e0;
+  --color-chart: #a8052b;
+  --font-display: "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-text: "SF Pro Text", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 17px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  --radius-sm: 8px;
+  --radius-lg: 18px;
+  --radius-pill: 9999px;
+  --ink: var(--color-ink);
+  --muted: var(--color-ink-muted-80);
+  --line: var(--color-hairline);
+  --paper: var(--color-canvas);
+  --chart: var(--color-chart);
+  font-family: var(--font-text);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.47;
+  letter-spacing: -.374px;
+}
+
+main {
+  display: grid;
+  gap: var(--space-xl);
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-xxl) var(--space-xxl) 64px;
+}
+
+h1, h2, p { margin: 0; }
+
+h1 {
+  max-width: 24ch;
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1.07;
+  letter-spacing: -.28px;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+h2 {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.19;
+  letter-spacing: -.231px;
+}
+
+.dashboard-header {
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-xl) 0 var(--space-lg);
+}
+
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-lg);
+  padding-top: var(--space-xs);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.43;
+  letter-spacing: -.224px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-lg);
+}
+
+.stat {
+  display: grid;
+  align-content: start;
+  gap: var(--space-sm);
+  min-width: 0;
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--color-parchment);
+}
+
+.stat span {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.43;
+  letter-spacing: -.224px;
+}
+
+.stat strong {
+  font-family: var(--font-display);
+  font-size: clamp(21px, 2.4vw, 34px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.19;
+  letter-spacing: -.374px;
+  overflow-wrap: anywhere;
+}
+
+.plots {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--space-lg);
+}
+
+.plot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+  padding: var(--space-lg);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.canvas-wrap { height: 352px; min-width: 0; }
+canvas { display: block; width: 100%; height: 100%; }
+
+.legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+  min-height: 40px;
+  margin-top: auto;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.43;
+  letter-spacing: -.224px;
+}
+
+.legend > span { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.swatch { display: inline-block; width: 24px; border-top: 3px solid var(--chart); }
+.swatch.contour { border-top-width: 1px; opacity: .5; }
+
+.controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg) var(--space-xl);
+  border-radius: var(--radius-lg);
+  background: var(--color-parchment);
+}
+
+button, select, input { font: inherit; }
+button, select {
+  min-height: 44px;
+  border: 1px solid transparent;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+button {
+  min-width: 128px;
+  padding: 11px 22px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--paper);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.47;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+button:active { transform: scale(.95); }
+
+button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--color-primary-focus);
+  outline-offset: var(--space-xxs);
+}
+
+.scrubber {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.scrubber input {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.speed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.43;
+  letter-spacing: -.224px;
+}
+
+.speed select {
+  min-width: 88px;
+  padding: var(--space-xs) 14px;
+  border-color: var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+@media (max-width: 1068px) {
+  main { padding: var(--space-xl) var(--space-xl) var(--space-xxl); }
+  h1 { font-size: 40px; line-height: 1.1; }
+  .dashboard-header { padding-top: var(--space-md); }
+  .stats { gap: var(--space-md); }
+  .stat { padding: var(--space-md); }
+}
+
+@media (max-width: 833px) {
+  main { gap: var(--space-lg); padding: var(--space-lg) var(--space-lg) var(--space-xxl); }
+  .plots { grid-template-columns: 1fr; }
+  .canvas-wrap { height: 320px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat { padding: var(--space-lg); }
+  .controls { grid-template-columns: auto 1fr; gap: var(--space-md) var(--space-lg); padding: var(--space-lg); }
+  .speed { grid-column: 2; grid-row: 1; justify-self: end; }
+  .scrubber { grid-column: 1 / -1; grid-row: 2; }
+}
+
+@media (max-width: 640px) {
+  h1 { font-size: 34px; line-height: 1.1; }
+}
+
+@media (max-width: 419px) {
+  main { gap: var(--space-lg); padding: var(--space-lg) var(--space-md) var(--space-xl); }
+  h1 { font-size: 28px; }
+  .stats { gap: var(--space-sm); }
+  .stat, .plot, .controls { padding: var(--space-md); }
+  .controls { gap: var(--space-md) var(--space-sm); }
+  button { min-width: 112px; padding-inline: var(--space-md); }
+  .speed { gap: var(--space-xs); }
+  .speed select { min-width: 0; padding-inline: var(--space-xs); }
+  .canvas-wrap { height: 296px; }
+  h2 { font-size: 17px; line-height: 1.24; letter-spacing: -.374px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button { transition: none; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header class="dashboard-header">
+    <div class="heading">
+      <h1>Visualisasi Logistic Regression</h1>
+    </div>
+    <div class="meta" id="metadata"></div>
+  </header>
+  <div class="stats">
+    <div class="stat"><span>Epoch</span><strong id="epoch-value"></strong></div>
+    <div class="stat"><span>Log-loss</span><strong id="loss-value"></strong></div>
+    <div class="stat"><span>θ₀ bias</span><strong id="bias-value"></strong></div>
+    <div class="stat"><span>θ₁ bobot fitur</span><strong id="weight-value"></strong></div>
+  </div>
+  <div class="plots">
+    <section class="plot">
+      <div class="plot-heading">
+        <h2>Garis kontur fungsi loss (log-loss)</h2>
+      </div>
+      <div class="canvas-wrap"><canvas id="contour" role="img" aria-label="Kontur log-loss statis dengan bobot fitur lain tetap pada hasil akhir training. Gerakan titik memakai interpolasi linear antar-checkpoint rekaman."></canvas></div>
+      <div class="legend"><span><i class="swatch contour"></i>Kontur: irisan bobot akhir</span><span><i class="swatch"></i>Lintasan training</span></div>
+    </section>
+    <section class="plot">
+      <div class="plot-heading">
+        <h2>Log-loss selama training</h2>
+      </div>
+      <div class="canvas-wrap"><canvas id="loss" role="img" aria-label="Grafik log-loss seluruh data training terhadap jumlah update dengan skala log. Angka loss berasal dari checkpoint asli; gerakan penanda memakai interpolasi linear antar-checkpoint."></canvas></div>
+    </section>
+  </div>
+  <div class="controls">
+    <button id="play" type="button">Putar</button>
+    <label class="scrubber" for="epoch-slider"><span>Epoch</span><input id="epoch-slider" type="range" min="0" value="0" step="1"></label>
+    <label class="speed" for="speed">Kecepatan<select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+  </div>
+</main>
+<script id="training-data" type="application/json">__TRAINING_DATA__</script>
+<script>
+(() => {
+  'use strict';
+  const data = JSON.parse(document.getElementById('training-data').textContent);
+  const el = id => document.getElementById(id);
+  const trace = data.trace, frames = data.frames, last = trace.length - 1;
+  const times = data.steps.map(step => Math.log1p(step));
+  const styles = getComputedStyle(document.documentElement);
+  const color = name => styles.getPropertyValue(name).trim();
+  const ink = color('--ink'), muted = color('--muted'), line = color('--line');
+  const accent = color('--chart'), paper = color('--paper');
+  const font = '14px ' + color('--font-text');
+  const format = value => String(Number(value.toPrecision(4)));
+  const updates = new Intl.NumberFormat('id-ID', {notation: 'compact', maximumFractionDigits: 1});
+  const mix = (a, b, t) => a + (b - a) * t;
+  const slider = el('epoch-slider'), button = el('play'), speed = el('speed');
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  slider.max = last;
+  slider.step = 'any';
+
+  const metadata = [data.samples.toLocaleString('id-ID') + ' sampel', data.features + ' fitur',
+    'Learning rate ' + data.rate, 'Regularisasi: ' + (data.penalty || 'tanpa penalti')];
+  if (data.penalty) metadata.push('Strength ' + data.strength);
+  if (data.penalty === 'elasticnet') metadata.push('L1 ratio ' + data.ratio);
+  metadata.forEach(text => {
+    const span = document.createElement('span');
+    span.textContent = text;
+    el('metadata').appendChild(span);
+  });
+
+  const losses = trace.map(point => point[3]);
+  const minLoss = Math.min(...losses), maxLoss = Math.max(...losses);
+  const lossPadding = Math.max((maxLoss - minLoss) * .12, .005);
+  const surfaces = frames[frames.length - 1].grid.flat();
+  const minSurface = surfaces.reduce((a, b) => Math.min(a, b));
+  const maxSurface = surfaces.reduce((a, b) => Math.max(a, b));
+  const levels = Array.from({length: 12}, (_, i) =>
+    minSurface + (maxSurface - minSurface) * Math.pow((i + 1) / 13, 2));
+  let position = 0, playing = false, animation = null, previousTime = null;
+  let contourPlot, lossPlot, readout = -1;
+  const contourCache = new Map();
+
+  function makePlot(id, bounds, xLabel, yLabel, xFormat = format) {
+    const canvas = el(id), ctx = canvas.getContext('2d');
+    const {width, height} = canvas.getBoundingClientRect();
+    const dpi = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpi);
+    canvas.height = Math.round(height * dpi);
+    ctx.setTransform(dpi, 0, 0, dpi, 0, 0);
+    ctx.font = font;
+    const [xMin, xMax, yMin, yMax] = bounds;
+    const ticks = Array.from({length: 5}, (_, i) => [mix(xMin, xMax, i / 4), mix(yMin, yMax, i / 4)]);
+    const left = Math.max(58, ...ticks.map(t => ctx.measureText(format(t[1])).width + 30));
+    const right = width - Math.max(24, ...ticks.map(t => ctx.measureText(xFormat(t[0])).width / 2 + 8));
+    const top = 12, bottom = height - 64;
+    const x = value => left + (value - xMin) / (xMax - xMin) * (right - left);
+    const y = value => bottom - (value - yMin) / (yMax - yMin) * (bottom - top);
+    return {ctx, width, height, left, right, top, bottom, x, y, ticks, xLabel, yLabel, xFormat};
+  }
+
+  function beginPlot(p) {
+    const c = p.ctx;
+    c.clearRect(0, 0, p.width, p.height);
+    c.lineWidth = 1;
+    p.ticks.forEach(([xv, yv], i) => {
+      c.beginPath(); c.moveTo(p.left, p.y(yv)); c.lineTo(p.right, p.y(yv));
+      c.strokeStyle = line; c.stroke();
+      c.fillStyle = muted; c.textAlign = 'right';
+      c.fillText(format(yv), p.left - 8, p.y(yv) + 4);
+      if (p.width >= 350 || i % 2 === 0) {
+        c.textAlign = 'center'; c.fillText(p.xFormat(xv), p.x(xv), p.bottom + 21);
+      }
+    });
+    c.beginPath(); c.moveTo(p.left, p.top); c.lineTo(p.left, p.bottom); c.lineTo(p.right, p.bottom);
+    c.strokeStyle = ink; c.stroke(); c.fillStyle = ink; c.textAlign = 'center';
+    c.fillText(p.xLabel, (p.left + p.right) / 2, p.height - 12);
+    c.save(); c.translate(13, (p.top + p.bottom) / 2); c.rotate(-Math.PI / 2);
+    c.fillText(p.yLabel, 0, 0); c.restore();
+    c.save(); c.beginPath(); c.rect(p.left, p.top, p.right - p.left, p.bottom - p.top); c.clip();
+  }
+
+  function contours(index) {
+    if (contourCache.has(index)) return contourCache.get(index);
+    const p = contourPlot, grid = frames[index].grid, xs = data.theta0, ys = data.theta1;
+    const paths = levels.map(level => {
+      const path = new Path2D(), segments = [];
+      for (let j = 0; j < ys.length - 1; j++) for (let i = 0; i < xs.length - 1; i++) {
+        const corners = [[xs[i], ys[j]], [xs[i + 1], ys[j]], [xs[i + 1], ys[j + 1]], [xs[i], ys[j + 1]]];
+        const values = [grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]];
+        const crossings = [];
+        for (let edge = 0; edge < 4; edge++) {
+          const next = (edge + 1) % 4;
+          if ((values[edge] < level) === (values[next] < level)) continue;
+          const t = (level - values[edge]) / (values[next] - values[edge]);
+          crossings.push([mix(corners[edge][0], corners[next][0], t), mix(corners[edge][1], corners[next][1], t)]);
+        }
+        // Resolve cells crossed four times without joining the wrong branches.
+        if (crossings.length === 4 &&
+            (values.reduce((a, b) => a + b, 0) / 4 < level) !== (values[0] < level)) crossings.push(crossings.shift());
+        for (let k = 0; k + 1 < crossings.length; k += 2) segments.push([crossings[k], crossings[k + 1]]);
+      }
+      segments.forEach(([a, b]) => { path.moveTo(p.x(a[0]), p.y(a[1])); path.lineTo(p.x(b[0]), p.y(b[1])); });
+      const anchor = segments.length ? segments[Math.floor(segments.length * .6)][0] : null;
+      return {path, level, anchor};
+    });
+    contourCache.set(index, paths);
+    return paths;
+  }
+
+  function drawContours(index, opacity) {
+    if (opacity <= 0) return;
+    const p = contourPlot, c = p.ctx;
+    c.save(); c.strokeStyle = accent; c.lineWidth = 1;
+    contours(index).forEach(({path, level, anchor}, i) => {
+      c.globalAlpha = .42 * opacity; c.stroke(path);
+      if (i % 3 !== 0 || !anchor) return;
+      const x = p.x(anchor[0]), y = p.y(anchor[1]);
+      if (x <= p.left + 24 || x >= p.right - 24 || y <= p.top + 10 || y >= p.bottom - 10) return;
+      const text = level.toFixed(3), width = c.measureText(text).width;
+      c.globalAlpha = .94 * opacity; c.fillStyle = paper; c.fillRect(x - width / 2 - 4, y - 12, width + 8, 20);
+      c.globalAlpha = opacity; c.fillStyle = muted; c.textAlign = 'center'; c.fillText(text, x, y + 2);
+    });
+    c.restore();
+  }
+
+  function currentPoint() {
+    const index = Math.floor(position), next = Math.min(last, index + 1);
+    const t = reducedMotion ? 0 : position - index;
+    return {index, values: trace[index].map((value, column) => mix(value, trace[next][column], t)),
+      time: mix(times[index], times[next], t)};
+  }
+
+  function trajectory(p, point, column, start, opacity) {
+    const c = p.ctx, xValue = i => column === 3 ? times[i] : trace[i][1];
+    c.beginPath();
+    for (let i = start; i <= point.index; i++) {
+      if (i === start) c.moveTo(p.x(xValue(i)), p.y(trace[i][column]));
+      else c.lineTo(p.x(xValue(i)), p.y(trace[i][column]));
+    }
+    c.lineTo(p.x(column === 3 ? point.time : point.values[1]), p.y(point.values[column]));
+    c.strokeStyle = accent; c.globalAlpha = opacity; c.lineWidth = 2; c.stroke(); c.globalAlpha = 1;
+  }
+
+  function marker(p, x, y, radius, hollow = false) {
+    const c = p.ctx;
+    c.beginPath(); c.arc(p.x(x), p.y(y), radius, 0, Math.PI * 2);
+    c.fillStyle = hollow ? paper : accent; c.strokeStyle = hollow ? accent : paper;
+    c.lineWidth = 2; c.fill(); c.stroke();
+  }
+
+  function draw() {
+    const point = currentPoint();
+    if (readout !== point.index) {
+      readout = point.index;
+      // Readouts retain the recorded values; only the moving marker is interpolated.
+      const recorded = trace[readout];
+      el('epoch-value').textContent = format(recorded[0]) + ' / ' + format(trace[last][0]);
+      el('loss-value').textContent = recorded[3].toFixed(5);
+      el('bias-value').textContent = recorded[1].toFixed(5);
+      el('weight-value').textContent = recorded[2].toFixed(5);
+      slider.setAttribute('aria-valuetext', 'Epoch ' + format(recorded[0]) + ', update ' + data.steps[readout]);
+    }
+    slider.value = position;
+    button.textContent = playing ? 'Jeda' : position === last ? 'Putar ulang' : 'Putar';
+    button.setAttribute('aria-pressed', String(playing));
+
+    beginPlot(contourPlot);
+    drawContours(frames.length - 1, 1);
+    // Keep the whole trajectory, but emphasize only recent checkpoints.
+    trajectory(contourPlot, point, 2, 0, .2);
+    trajectory(contourPlot, point, 2, Math.max(0, point.index - 20), 1);
+    marker(contourPlot, trace[0][1], trace[0][2], 4, true);
+    marker(contourPlot, point.values[1], point.values[2], 6);
+    contourPlot.ctx.restore();
+
+    beginPlot(lossPlot);
+    trajectory(lossPlot, {index: last, values: trace[last], time: times[last]}, 3, 0, .15);
+    trajectory(lossPlot, point, 3, 0, 1);
+    marker(lossPlot, point.time, point.values[3], 5);
+    lossPlot.ctx.restore();
+  }
+
+  function resize() {
+    const xs = data.theta0, ys = data.theta1;
+    contourPlot = makePlot('contour', [xs[0], xs[xs.length - 1], ys[0], ys[ys.length - 1]], 'θ₀ bias', 'θ₁ bobot');
+    lossPlot = makePlot('loss', [0, Math.max(1, times[last]), minLoss - lossPadding, maxLoss + lossPadding],
+      'Update (skala log)', 'Log-loss', value => updates.format(Math.expm1(value)));
+    contourCache.clear();
+    draw();
+  }
+
+  function pause() {
+    playing = false;
+    cancelAnimationFrame(animation);
+    animation = null;
+    previousTime = null;
+  }
+
+  function tick(time) {
+    if (!playing) return;
+    if (previousTime !== null) position = Math.min(last,
+      position + (time - previousTime) / data.playback_duration_ms * last * Number(speed.value));
+    previousTime = time;
+    if (position === last) pause();
+    draw();
+    if (playing) animation = requestAnimationFrame(tick);
+  }
+
+  button.addEventListener('click', () => {
+    if (playing) pause();
+    else if (last > 0) {
+      if (position === last) position = 0;
+      playing = true;
+      previousTime = null;
+      animation = requestAnimationFrame(tick);
+    }
+    draw();
+  });
+  slider.addEventListener('input', () => { pause(); position = Number(slider.value); draw(); });
+  speed.addEventListener('change', () => { previousTime = null; });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); draw(); } });
+  const observer = new ResizeObserver(resize);
+  document.querySelectorAll('.canvas-wrap').forEach(wrapper => observer.observe(wrapper));
+  resize();
+})();
+</script>
+</body>
+</html>
