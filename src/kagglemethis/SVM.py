@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 # Uses the sequential minimal optimization (SMO) algorithm to compute the hyperplane of SVM model
 # References: 
@@ -21,13 +22,13 @@ class SVC:
         self.tolerance = tol
         self.max_cache_size = cache_size # Maximum cache size for kernel computation, in columns
         self.max_iter = max_iter
+        self.classes = None
 
         self._coef = None
         self._support = None
         self._support_vectors = None
         self._dual_coef = None
         self._intercept = 0.0
-        self._classes = None
         self._gamma = None
         self._rng = np.random.default_rng(random_state)
 
@@ -107,10 +108,10 @@ class SVC:
         n_samples, n_features = X.shape
 
         # Map classification labels to -1 and +1 but store original for prediction later
-        self._classes = np.unique(y)
-        if len(self._classes) != 2:
-            raise NotImplementedError(f"This SVC implementation does not support multi-class classification (number of class is {len(self._classes)})")
-        y = np.where(y == self._classes[0], -1.0, 1.0)
+        self.classes = np.unique(y)
+        if len(self.classes) != 2:
+            raise NotImplementedError(f"This SVC implementation does not support multi-class classification (number of class is {len(self.classes)})")
+        y = np.where(y == self.classes[0], -1.0, 1.0)
 
         # Resolve gamma parameter (uses the same gamma calculation as scikit-learn gamma)
         if self.gamma == 'scale':
@@ -383,7 +384,7 @@ class SVC:
     # Perform classification on samples in X
     def predict(self, X):
         X = np.asarray(X, dtype=float)
-        return np.where(self.decision_function(X) >= 0, self._classes[1], self._classes[0])
+        return np.where(self.decision_function(X) >= 0, self.classes[1], self.classes[0])
 
     # Return accuracy (count of correct prediction) on provided data and labels
     def score(self, X, y):
@@ -396,7 +397,7 @@ class SVC:
 
 
 # Plot the decision boundary of 2D data based on a fitted SVC model
-def plot_decision_boundary(model, X, y, label1="Feature 1", label2="Feature 2", title="SVM Decision Boundary Visualisation"):
+def plot_decision_boundary(model, X, y, xlabel="Feature 1", ylabel="Feature 2", title="SVC Decision Boundary Visualisation"):
     if not isinstance(model, SVC):
         raise TypeError(f"Unknown model parameter passed, the model should be an SVC model.")
 
@@ -404,34 +405,45 @@ def plot_decision_boundary(model, X, y, label1="Feature 1", label2="Feature 2", 
     if X.shape[1] != 2:
         raise NotImplementedError(f"Only supports 2D data on X, the X dimension is {X.shape[1]}.")
     
-    y = np.asarray(y).reshape(-1)
+    y = np.asarray(y).ravel()
     if y.shape[0] != X.shape[0]:
         raise ValueError(f"Number of samples mismatch, X has {X.shape[0]} samples but y has {y.shape[0]} samples.")
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-
-    # Scatter X points using different color for each class
-    y_colors = np.where(y == model._classes[0], -1, 1)
-    ax.scatter(X[:, 0], X[:, 1], c=y_colors, cmap=plt.cm.coolwarm, s=30, edgecolors='k')
-    
-    # Show the actual support vector with different style
-    if model._support_vectors is not None and len(model._support_vectors) > 0:
-        ax.scatter(model._support_vectors[:, 0], model._support_vectors[:, 1], s=150, facecolors='none', edgecolors='k', linewidths=1.5, label='Support Vectors')
-
     # Find hyperplane by evaluating the decision function, based on the X-Y coordinate
-    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 200), np.linspace(y_min, y_max, 200))
+    x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+    y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
+    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 250), np.linspace(y_min, y_max, 250))
+    
+    grid = np.column_stack([xx.ravel(), yy.ravel()])
+    Z = model.decision_function(grid).reshape(xx.shape)
 
-    grid_points = np.c_[xx.ravel(), yy.ravel()]
-    Z = model.decision_function(grid_points)
-    Z = Z.reshape(xx.shape)
+    # Initiate plot
+    fig, ax = plt.subplots(figsize=(9, 6))
 
-    # Draw the hyperplane and the line intersecting with each outer data points
-    ax.contour(xx, yy, Z, colors='k', levels=[-1, 0, 1], alpha=0.5, linestyles=['--', '-', '--'])
+    # Plot some shade color of regions
+    ax.contourf(xx, yy, Z >= 0, alpha=0.25, cmap=plt.cm.coolwarm)
+    ax.contour(xx, yy, Z, levels=[-1, 0, 1], linestyles=["--", "-", "--"], colors="black", linewidths=[1.0, 2.0, 1.0])
 
+    # Plot the data points of both classes
+    for class_type, color in zip(model.classes, ["royalblue", "crimson"]):
+        ax.scatter(X[y == class_type, 0], X[y == class_type, 1], c=color, label=f"Class {class_type}", s=20, alpha=0.7)
+
+    # Plot the Support Vectors
+    if model._support_vectors is not None and len(model._support_vectors) > 0:
+        sv1 = model._support_vectors[:, 0]
+        sv2 = model._support_vectors[:, 1]
+        ax.scatter(sv1,  sv2, s=80, facecolors="none", edgecolors="black", linewidths=1.2, label="Support Vectors")
+
+    # Custom legend for plot
+    handles, labels = ax.get_legend_handles_labels()
+    hyperplane = Line2D([0], [0], color="black", lw=2.0, linestyle="-", label="Hyperplane")
+    margin = Line2D([0], [0], color="black", lw=1.0, linestyle="--", label="Margin")
+    handles.extend([hyperplane, margin])
+
+    # Set label and show
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     ax.set_title(title)
-    ax.set_xlabel(label1)
-    ax.set_ylabel(label2)
-    ax.legend()
+    ax.legend(handles=handles, loc="best")
+    plt.tight_layout()
     plt.show()
