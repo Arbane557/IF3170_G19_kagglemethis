@@ -1,18 +1,22 @@
 import numpy as np
 
+from .bonus.logreg_dashboard import record_training, training_recorder
+
 
 class LogisticRegression:
-    def __init__(self, rate=0.01, epochs=1000, penalty=None, strength=0.01, ratio=0.5):
+    def __init__(self, rate=0.01, epochs=1000, penalty=None, strength=0.01, ratio=0.5, random_state=0):
         self.rate = rate
         self.epochs = epochs
         self.penalty = penalty
         self.strength = strength
         self.ratio = ratio
+        self.random_state = random_state
 
         self.weights = None
         self.bias = 0.0
         self.classes = None
 
+    @record_training
     def fit(self, data, target):
         # Each row contain one sample and each column contain one numeric feature
         # Cleaning and scaling should already be done before training
@@ -28,34 +32,39 @@ class LogisticRegression:
 
         self.weights = np.zeros(data.shape[1])
         self.bias = 0.0
+        rng = np.random.default_rng(self.random_state)
+        recorder = training_recorder(self)
+        if recorder is not None:
+            recorder.observe(self, 0)
 
         for epoch in range(self.epochs):
-            # Sigmoid turn linear score into positive class probability
-            # Logaddexp keep the same sigmoid result without exponential overflow
-            scores = data @ self.weights + self.bias
-            probability = np.exp(-np.logaddexp(0, -scores))
+            first_step = epoch * len(data) + 1
+            for step, index in enumerate(rng.permutation(len(data)), start=first_step):
+                sample = data[index]
+                score = sample @ self.weights + self.bias
+                probability = np.exp(-np.logaddexp(0, -score))
 
-            # Mean log loss give this gradient for all training samples
-            # Bias gradient only need the average prediction error
-            error = probability - labels
-            gradient = data.T @ error / len(data)
-            bias = np.mean(error)
+                # Ascend the log-likelihood after each individual sample
+                # https://cs229.stanford.edu/summer2023/cs229-notes1.pdf#page=16
+                error = labels[index] - probability
+                gradient = error * sample
 
-            # L1 use absolute weight sum and L2 use half squared weight sum
-            # Elastic Net mix both penalties using ratio as the L1 share
-            if self.penalty == "l1":
-                gradient += self.strength * np.sign(self.weights)
+                # A sample gradient estimates the mean log-likelihood gradient.
+                # Subtract the penalty gradient to maximize that penalized mean
+                if self.penalty == "l1":
+                    gradient -= self.strength * np.sign(self.weights)
 
-            elif self.penalty == "l2":
-                gradient += self.strength * self.weights
+                elif self.penalty == "l2":
+                    gradient -= self.strength * self.weights
 
-            elif self.penalty == "elasticnet":
-                gradient += self.strength * (self.ratio * np.sign(self.weights) + (1 - self.ratio) * self.weights)
+                elif self.penalty == "elasticnet":
+                    gradient -= self.strength * (self.ratio * np.sign(self.weights) + (1 - self.ratio) * self.weights)
 
-            # Move weights and bias against the gradient to reduce loss
-            # Penalty only affect weights so bias is never regularized
-            self.weights -= self.rate * gradient
-            self.bias -= self.rate * bias
+                self.weights += self.rate * gradient
+                self.bias += self.rate * error
+
+                if recorder is not None:
+                    recorder.observe(self, step)
 
         return self
 
