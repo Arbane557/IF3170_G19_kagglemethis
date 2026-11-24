@@ -1,5 +1,3 @@
-"""Replay the first LogReg fit on the notebook's preprocessed DataFrame."""
-
 from functools import wraps
 from html import escape
 import json
@@ -72,8 +70,16 @@ def _display(path, document):
 
 class _TrainingRecorder:
     def __init__(self, data, target, epochs):
-        # The first fit in main.ipynb passes X with these column names and y=0/1
-        self.feature = data.columns.get_loc(FEATURE_NAME)
+        # Preprocessors may return arrays without feature names (including PCA)
+        columns = getattr(data, "columns", None)
+        self.feature = 0
+        self.feature_name = "feature_0"
+        
+        if columns is not None:
+            if FEATURE_NAME in columns:
+                self.feature = columns.get_loc(FEATURE_NAME)
+            self.feature_name = str(columns[self.feature])
+
         self.data = np.asarray(data, dtype=float)
         self.sign = 1 - 2 * np.asarray(target, dtype=float)
         total_steps = len(data) * epochs
@@ -129,7 +135,7 @@ class _TrainingRecorder:
         theta0, theta1 = axis(trace[:, 1]), axis(trace[:, 2])
         print("Membuat kontur dashboard LogReg dari seluruh data training...")
         payload = {
-            "feature": FEATURE_NAME,
+            "feature": self.feature_name,
             "samples": len(self.data),
             "features": self.data.shape[1],
             "rate": float(model.rate),
