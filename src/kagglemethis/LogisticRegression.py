@@ -4,13 +4,15 @@ from .bonus.logreg_dashboard import record_training, training_recorder
 
 
 class LogisticRegression:
-    def __init__(self, rate=0.01, epochs=300, penalty=None, strength=0.01, ratio=0.5, random_state=0):
+    def __init__(self, rate=0.01, epochs=300, penalty=None, strength=0.01, ratio=0.5, random_state=0, record=False, dashboard_path=None):
         self.rate = rate
         self.epochs = epochs
         self.penalty = penalty
         self.strength = strength
         self.ratio = ratio
         self.random_state = random_state
+        self.dashboard_path = dashboard_path
+        self.record = record
 
         self.weights = None
         self.bias = 0.0

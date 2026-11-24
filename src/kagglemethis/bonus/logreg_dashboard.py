@@ -18,6 +18,9 @@ PLAYBACK_DURATION_MS = 20_000
 def record_training(fit):
     @wraps(fit)
     def wrapped(model, data, target):
+        if not getattr(model, "record", True):
+            return fit(model, data, target)
+
         recorder = _TrainingRecorder(data, target, model.epochs)
         model._dashboard_recorder = recorder
         try:
@@ -25,12 +28,13 @@ def record_training(fit):
         finally:
             del model._dashboard_recorder
 
+        output_path = getattr(model, "dashboard_path", None) or OUTPUT_PATH
         try:
-            path, document = recorder.save(model)
+            path, document = recorder.save(model, output_path=output_path)
             model.dashboard_path = str(path)
             _display(path, document)
         except (OSError, ValueError) as error:
-            warnings.warn(f"Could not create the LogReg dashboard: {error}", RuntimeWarning)
+            print(f"Could not create the LogReg dashboard: {error}")
         return result
 
     return wrapped
@@ -107,7 +111,7 @@ class _TrainingRecorder:
 
         return (total / len(feature)).reshape(GRID_SIZE, GRID_SIZE).round(8).tolist()
 
-    def save(self, model):
+    def save(self, model, output_path=OUTPUT_PATH):
         trace = np.asarray(self.trace)
 
         def axis(values):
@@ -135,7 +139,7 @@ class _TrainingRecorder:
         encoded = json.dumps(payload, allow_nan=False, separators=(",", ":")).replace("<", "\\u003c")
         document = TEMPLATE_PATH.read_text(encoding="utf-8").replace("__TRAINING_DATA__", encoded)
 
-        path = OUTPUT_PATH.resolve()
+        path = Path(output_path).resolve()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(document, encoding="utf-8")
 
