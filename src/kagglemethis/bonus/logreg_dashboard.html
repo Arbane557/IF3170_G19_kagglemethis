@@ -85,14 +85,35 @@ h2 {
 
 
 .meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs) var(--space-lg);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-md);
+  margin: 0;
   padding-top: var(--space-xs);
+}
+
+.meta-item {
+  display: grid;
+  gap: var(--space-xs);
+  min-width: 0;
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.meta dt {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.43;
   letter-spacing: -.224px;
+}
+
+.meta dd {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .stats {
@@ -252,7 +273,7 @@ button:focus-visible, select:focus-visible, input:focus-visible {
   main { gap: var(--space-lg); padding: var(--space-lg) var(--space-lg) var(--space-xxl); }
   .plots { grid-template-columns: 1fr; }
   .canvas-wrap { height: 320px; }
-  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats, .meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat { padding: var(--space-lg); }
   .controls { grid-template-columns: auto 1fr; gap: var(--space-md) var(--space-lg); padding: var(--space-lg); }
   .speed { grid-column: 2; grid-row: 1; justify-self: end; }
@@ -267,7 +288,7 @@ button:focus-visible, select:focus-visible, input:focus-visible {
   main { gap: var(--space-lg); padding: var(--space-lg) var(--space-md) var(--space-xl); }
   h1 { font-size: 28px; }
   .stats { gap: var(--space-sm); }
-  .stat, .plot, .controls { padding: var(--space-md); }
+  .stat, .meta-item, .plot, .controls { padding: var(--space-md); }
   .controls { gap: var(--space-md) var(--space-sm); }
   button { min-width: 112px; padding-inline: var(--space-md); }
   .speed { gap: var(--space-xs); }
@@ -287,7 +308,7 @@ button:focus-visible, select:focus-visible, input:focus-visible {
     <div class="heading">
       <h1>Visualisasi Logistic Regression</h1>
     </div>
-    <div class="meta" id="metadata"></div>
+    <dl class="meta" id="metadata" aria-label="Statistik training"></dl>
   </header>
   <div class="stats">
     <div class="stat"><span>Epoch</span><strong id="epoch-value"></strong></div>
@@ -301,7 +322,7 @@ button:focus-visible, select:focus-visible, input:focus-visible {
         <h2>Garis kontur fungsi loss (log-loss)</h2>
       </div>
       <div class="canvas-wrap"><canvas id="contour" role="img" aria-label="Kontur log-loss statis dengan bobot fitur lain tetap pada hasil akhir training. Gerakan titik memakai interpolasi linear antar-checkpoint rekaman."></canvas></div>
-      <div class="legend"><span><i class="swatch contour"></i>Kontur: irisan bobot akhir</span><span><i class="swatch"></i>Lintasan training</span></div>
+      <div class="legend"><span><i class="swatch contour"></i>Kontur irisan bobot akhir</span><span><i class="swatch"></i>Lintasan training</span></div>
     </section>
     <section class="plot">
       <div class="plot-heading">
@@ -337,14 +358,21 @@ button:focus-visible, select:focus-visible, input:focus-visible {
   slider.max = last;
   slider.step = 'any';
 
-  const metadata = [data.samples.toLocaleString('id-ID') + ' sampel', data.features + ' fitur',
-    'Learning rate ' + data.rate, 'Regularisasi: ' + (data.penalty || 'tanpa penalti')];
-  if (data.penalty) metadata.push('Strength ' + data.strength);
-  if (data.penalty === 'elasticnet') metadata.push('L1 ratio ' + data.ratio);
-  metadata.forEach(text => {
-    const span = document.createElement('span');
-    span.textContent = text;
-    el('metadata').appendChild(span);
+  const metadata = [
+    ['Sample:', data.samples.toLocaleString('id-ID')],
+    ['Fitur:', data.features.toLocaleString('id-ID')],
+    ['Learning rate:', String(data.rate)],
+    ['Penalty:', data.penalty || 'none']
+  ];
+  metadata.forEach(([label, value]) => {
+    const card = document.createElement('div');
+    card.className = 'meta-item';
+    const term = document.createElement('dt');
+    term.textContent = label;
+    const detail = document.createElement('dd');
+    detail.textContent = value;
+    card.append(term, detail);
+    el('metadata').appendChild(card);
   });
 
   const losses = trace.map(point => point[3]);
