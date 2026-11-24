@@ -3,28 +3,21 @@ from html import escape
 import json
 from pathlib import Path
 import warnings
+from IPython import get_ipython
+from IPython.display import HTML, display
 
 import numpy as np
 
 
 TEMPLATE_PATH = Path(__file__).with_suffix(".html")
 OUTPUT_PATH = Path("output/logreg_dashboard.html")
-FEATURE_NAME = "days_before_arrival"
 MAX_CHECKPOINTS = 300
 GRID_SIZE = 25
 PLAYBACK_DURATION_MS = 20_000
 
-# Preserve the first-fit guard across the notebook's %autoreload.
-_RECORDED = globals().get("_RECORDED", False)
-
-
 def record_training(fit):
     @wraps(fit)
     def wrapped(model, data, target):
-        global _RECORDED
-        if _RECORDED:
-            return fit(model, data, target)
-
         recorder = _TrainingRecorder(data, target, model.epochs)
         model._dashboard_recorder = recorder
         try:
@@ -32,13 +25,12 @@ def record_training(fit):
         finally:
             del model._dashboard_recorder
 
-        _RECORDED = True
         try:
             path, document = recorder.save(model)
             model.dashboard_path = str(path)
             _display(path, document)
         except (OSError, ValueError) as error:
-            warnings.warn(f"Dashboard LogReg tidak dibuat: {error}", RuntimeWarning)
+            warnings.warn(f"Could not create the LogReg dashboard: {error}", RuntimeWarning)
         return result
 
     return wrapped
@@ -49,12 +41,10 @@ def training_recorder(model):
 
 
 def _display(path, document):
-    from IPython import get_ipython
-    from IPython.display import HTML, display
-
-    print(f"Dashboard LogReg: {path}")
+    print(f"LogReg dashboard: {path}")
     if get_ipython() is None:
         return
+
     resize = (
         "const frame=this;const resize=()=>{frame.style.height="
         "Math.ceil(frame.contentDocument.body.getBoundingClientRect().height)+'px';};"
@@ -70,15 +60,8 @@ def _display(path, document):
 
 class _TrainingRecorder:
     def __init__(self, data, target, epochs):
-        # Preprocessors may return arrays without feature names (including PCA)
-        columns = getattr(data, "columns", None)
         self.feature = 0
         self.feature_name = "feature_0"
-        
-        if columns is not None:
-            if FEATURE_NAME in columns:
-                self.feature = columns.get_loc(FEATURE_NAME)
-            self.feature_name = str(columns[self.feature])
 
         self.data = np.asarray(data, dtype=float)
         self.sign = 1 - 2 * np.asarray(target, dtype=float)
@@ -94,7 +77,7 @@ class _TrainingRecorder:
     def observe(self, model, step):
         if step not in self.checkpoints:
             return
-        
+
         scores = self.data @ model.weights + model.bias
         loss = np.logaddexp(0, self.sign * scores).mean()
         # Rows contain fractional epoch, bias, selected feature weight, log-loss
@@ -121,6 +104,7 @@ class _TrainingRecorder:
             np.logaddexp(0, scores, out=scores)
 
             total += scores.sum(axis=0)
+
         return (total / len(feature)).reshape(GRID_SIZE, GRID_SIZE).round(8).tolist()
 
     def save(self, model):
@@ -133,7 +117,6 @@ class _TrainingRecorder:
             return np.linspace(low - padding, high + padding, GRID_SIZE)
 
         theta0, theta1 = axis(trace[:, 1]), axis(trace[:, 2])
-        print("Membuat kontur dashboard LogReg dari seluruh data training...")
         payload = {
             "feature": self.feature_name,
             "samples": len(self.data),
@@ -147,7 +130,6 @@ class _TrainingRecorder:
             "trace": trace.round(8).tolist(),
             "theta0": theta0.round(8).tolist(),
             "theta1": theta1.round(8).tolist(),
-            # A fixed slice through the final weights; only the trajectory moves.
             "frames": [{"point": len(trace) - 1, "grid": self._surface(model.weights, theta0, theta1)}]
         }
         encoded = json.dumps(payload, allow_nan=False, separators=(",", ":")).replace("<", "\\u003c")
@@ -156,5 +138,5 @@ class _TrainingRecorder:
         path = OUTPUT_PATH.resolve()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(document, encoding="utf-8")
-        
+
         return path, document
